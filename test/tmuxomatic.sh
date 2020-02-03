@@ -5,6 +5,8 @@ TMUXOMATIC_SOCKET=tmuxomatic
 TMUXOMATIC_TIMEOUT="10"
 TMUXOMATIC_EXIT_CODE=''
 
+source $TMUXOMATIC_CURRENT_DIR/../scripts/utils.sh
+
 function tmuxomatic() {
   TMUX='' tmux -L "$TMUXOMATIC_SOCKET" "$@"
 }
@@ -14,12 +16,28 @@ function tmuxomatic__exec() {
   tmuxomatic send-keys Enter
 }
 
+function tmuxomatic__skip() {
+  exit 2
+}
+
 function tmuxomatic__begin() {
   tmuxomatic list-sessions &> /dev/null
 
   if [[ $? -eq 1 ]]; then
-    tmuxomatic -f "$TMUXOMATIC_CURRENT_DIR/conf/tmuxomatic.conf" new-session -d -s tmuxomatic
-    wait
+    tmuxomatic -f /dev/null new-session -d -s tmuxomatic
+
+    tmuxomatic set -g prefix F12
+    tmuxomatic set -g status off
+
+    tmux_version=$(get_tmux_version)
+
+    if [[ $(version_compare_ge "$tmux_version" "2.9") == 1 ]]; then
+      tmuxomatic resize-window -x 80 -y 24
+    else
+      tmuxomatic set-window-option force-width 80
+      tmuxomatic set-window-option force-height 24
+    fi
+
     tmuxomatic__exec "export TMUX=''"
     tmuxomatic__exec "clear"
   fi
@@ -75,17 +93,12 @@ function tmuxomatic__expect() {
   fi
 }
 
-# TODO ideally specs shouldn't have any sleeps, but life is hard! Since
-# circle-ci machine is kind of slow, sleeps need to be longer there.
+# TODO 
 #
 # Ideally tmuxomatic__exec should now when a command has finished by using
 # "tmux wait", or alert-silence hook, or some tmux sorcery like that.
 function tmuxomatic__sleep() {
-  if [[ -z $CI ]]; then
-    sleep "$1"
-  else
-    sleep "$(($1 * 5))"
-  fi
+  sleep "$1"
 }
 
 # TODO not working in BSD, therefore end hook not being called and :skull:

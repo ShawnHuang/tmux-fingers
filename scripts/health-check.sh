@@ -23,26 +23,6 @@ function is_tmux_ready() {
   fi
 }
 
-function version_major() {
-  echo "$1" | cut -f1 -d. | grep -Eo "[0-9]"
-}
-
-function version_minor() {
-  echo "$1" | cut -f2 -d. | grep -Eo "[0-9]"
-}
-
-function program_exists() {
-  local prog="$1"
-
-  which "$prog" &> /dev/null
-
-  if [[ $? == "0" ]]; then
-    echo "1"
-  else
-    echo "0"
-  fi
-}
-
 function log_message() {
   log_messages+=("$1")
 }
@@ -108,10 +88,12 @@ function dump_log() {
 }
 
 function perform_health_check() {
+  #TODO warn about deprecated options
+
   local healthy=1
 
   # BASH_VERSION is a global
-  local TMUX_VERSION=$(tmux -V | grep -Eio "([0-9]+(\.[0-9]))(?:-rc)?")
+  local TMUX_VERSION=$(get_tmux_version)
   local GAWK_VERSION=""
 
   if [[ $(program_exists "gawk") = "1" ]]; then

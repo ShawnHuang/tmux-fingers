@@ -1,19 +1,22 @@
-#!/bin/sh
+#!/usr/bin/env bash
+
+CURRENT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 sudo aptitude update
-sudo aptitude install -y fish gawk
+sudo aptitude install -y fish gawk perl
 
-useradd -m -p "$(perl -e "print crypt('fishman','sa');")" -s "/usr/bin/fish" fishman
+sudo useradd -m -p "$(perl -e "print crypt('fishman','sa');")" -s "/usr/bin/fish" fishman
 
-wget https://github.com/tmux/tmux/releases/download/2.6/tmux-2.6.tar.gz
-
-# install tmux from source
-sudo aptitude remove -y tmux
+# remove system tmux and install tmux dependencies
+sudo aptitude remove -y tmux xsel
 sudo aptitude install -y libevent-dev libncurses5-dev
-tar xvzf tmux-2.6.tar.gz
-cd tmux-2.6/ || echo "Could not find tmux-2.6/ folder" || exit 1
 
-./configure
-make
-make install
-cd - || exit 1
+# stub xclip globally, to avoid having to use xvfb
+if [[ ! -e /usr/bin/xclip ]]; then
+  sudo ln -s $CURRENT_DIR/stubs/action-stub.sh /usr/bin/xclip
+fi
+
+sudo mkdir -p /opt/vagrant
+sudo ln -s "$PWD" /opt/vagrant/shared
+
+$CURRENT_DIR/../install-tmux-versions.sh

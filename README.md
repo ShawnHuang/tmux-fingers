@@ -1,6 +1,6 @@
 # tmux-fingers
 
-[![CircleCI](https://circleci.com/gh/Morantron/tmux-fingers.svg?style=svg)](https://circleci.com/gh/Morantron/tmux-fingers)
+[![Build Status](https://travis-ci.com/Morantron/tmux-fingers.svg?branch=develop)](https://travis-ci.com/Morantron/tmux-fingers)
 
 **tmux-fingers**: copy pasting with vimium/vimperator like hints.
 
@@ -10,7 +10,7 @@
 
 Press ( <kbd>prefix</kbd> + <kbd>F</kbd> ) to enter **[fingers]** mode, it will highlight relevant stuff in the current
 pane along with letter hints. By pressing those letters, the highlighted match
-will be yanked. Less keystrokes == profit!
+will be copied to the clipboard. Less keystrokes == profit!
 
 Here is a list of the stuff highlighted by default.
 
@@ -25,15 +25,15 @@ Here is a list of the stuff highlighted by default.
 It also works on copy mode, but requires *tmux 2.2* or newer to properly take
 the scroll position into account.
 
-Additionally, you can install
-[tmux-yank](https://github.com/tmux-plugins/tmux-yank) for system clipboard
-integration.
-
 ## Key shortcuts
 
 While in **[fingers]** mode, you can use the following shortcuts:
 
-* <kbd>a</kbd>-<kbd>z</kbd>: yank a highlighted hint.
+* <kbd>a</kbd>-<kbd>z</kbd>: copies selected match to the clipboard
+* <kbd>CTRL</kbd> + <kbd>a</kbd>-<kbd>z</kbd>: copies selected match to the clipboard and triggers [@fingers-ctrl-action](#fingers-ctrl-action). By default it triggers `:open:` action, which is useful for opening links in the browser for example.
+* <kbd>SHIFT</kbd> + <kbd>a</kbd>-<kbd>z</kbd>: copies selected match to the clipboard and triggers [@fingers-shift-action](#fingers-shift-action). By default it triggers `:paste:` action, which automatically pastes selected matches.
+* <kbd>ALT</kbd> + <kbd>a</kbd>-<kbd>z</kbd>: copies selected match to the clipboard and triggers [@fingers-alt-action](#fingers-alt-action). There is no default, configurable by the user.
+* <kbd>TAB</kbd>: toggle multi mode. First press enters multi mode, which allows to select multiple matches. Second press will exit with the selected matches copied to the clipboard.
 * <kbd>SPACE</kbd>: toggle compact hints ( see [@fingers-compact-hints](#fingers-compact-hints) ).
 * <kbd>CTRL</kbd> + <kbd>c</kbd>: exit **[fingers]** mode
 * <kbd>ESC</kbd>: exit help or **[fingers]** mode
@@ -41,7 +41,7 @@ While in **[fingers]** mode, you can use the following shortcuts:
 
 # Requirements
 
-* tmux 2.1+ ( 2.2 recommended )
+* tmux 2.1+ ( 2.8 recommended )
 * bash 4+
 * gawk
 
@@ -85,8 +85,10 @@ NOTE: for changes to take effect, you'll need to source again your `.tmux.conf` 
 
 * [@fingers-key](#fingers-key)
 * [@fingers-patterns-N](#fingers-patterns-N)
-* [@fingers-copy-command](#fingers-copy-command)
-* [@fingers-copy-command-uppercase](#fingers-copy-command-uppercase)
+* [@fingers-main-action](#fingers-main-action)
+* [@fingers-ctrl-action](#fingers-ctrl-action)
+* [@fingers-alt-action](#fingers-alt-action)
+* [@fingers-shift-action](#fingers-shift-action)
 * [@fingers-compact-hints](#fingers-compact-hints)
 * [@fingers-hint-position](#fingers-hint-position)
 * [@fingers-hint-position-nocompact](#fingers-hint-position-nocompact)
@@ -94,6 +96,12 @@ NOTE: for changes to take effect, you'll need to source again your `.tmux.conf` 
 * [@fingers-hint-format-nocompact](#fingers-hint-format-nocompact)
 * [@fingers-highlight-format](#fingers-highlight-format)
 * [@fingers-highlight-format-nocompact](#fingers-highlight-format-nocompact)
+* [@fingers-selected-hint-format](#fingers-selected-hint-format)
+* [@fingers-selected-hint-format-nocompact](#fingers-selected-hint-format-nocompact)
+* [@fingers-selected-highlight-format](#fingers-selected-highlight-format)
+* [@fingers-selected-highlight-format-nocompact](#fingers-selected-highlight-format-nocompact)
+* deprecated: [@fingers-copy-command](#fingers-copy-command)
+* deprecated: [@fingers-copy-command-uppercase](#fingers-copy-command-uppercase)
 
 ## @fingers-key
 
@@ -126,45 +134,56 @@ Patterns are case insensitive, and grep's extended syntax ( ERE ) should be used
 If the introduced regexp contains an error, an error will be shown when
 invoking the plugin.
 
-## @fingers-copy-command
+## @fingers-main-action
 
-`default: NONE`
+`default: :copy:`
 
-By default **tmux-fingers** will just yank matches using tmux clipboard. For
-system clipboard integration you'll also need to install
-[tmux-yank](https://github.com/tmux-plugins/tmux-yank).
-
+By default **tmux-fingers** will copy matches in tmux and system clipboard.
 
 If you still want to set your own custom command you can do so like this:
 
 ```
-set -g @fingers-copy-command 'xclip -selection clipboard'
+set -g @fingers-main-action '<your command here>'
 ```
-
 This command will also receive the following:
 
-  * `IS_UPPERCASE`: environment variable set to `1` or `0` depending on how the hint was introduced.
+  * `MODIFIER`: environment variable set to `ctrl`, `alt`, or `shift` specififying which modifier was used when selecting the match.
   * `HINT`: environment variable the selected letter hint itself ( ex: `q`, `as`, etc... ).
   * `stdin`: copied text will be piped to `@fingers-copy-command`.
 
+You can also use the following special values:
+
+* `:paste:` Copy the the match and paste it automatically.
+* `:copy:` Uses built-in system clipboard integration to copy the match.
+* `:open:` Uses built-in open file integration to open the file ( opens URLs in default browser, files in OS file navigator, etc ).
+
+## @fingers-ctrl-action
+
+`default: :open:`
+
+Same as [@fingers-main-action](#fingers-main-action) but only called when match is selected by holding <kbd>ctrl</kbd>
+
+This option requires `tmux 2.8` or higher.
+
+## @fingers-alt-action
+
+Same as [@fingers-main-action](#fingers-main-action) but only called when match is selected by holding <kbd>alt</kbd>
+
+This option requires `tmux 2.8` or higher.
+
+## @fingers-shift-action
+
+`default: :paste:`
+
+Same as [@fingers-main-action](#fingers-main-action) but only called when match is selected by holding <kbd>shift</kbd>
+
+## @fingers-copy-command
+
+_DEPRECATED: this option is deprecated, please use [@fingers-main-action](#fingers-main-action) instead_
+
 ## @fingers-copy-command-uppercase
 
-`default: NONE`
-
-Same as [@fingers-copy-command](#fingers-copy-command) but it's only triggered
-when input is introduced in uppercase letters.
-
-For example, this open links in browser when holding <kbd>SHIFT</kbd> while selecting the hint:
-
-```
-set -g @fingers-copy-command-uppercase 'xargs xdg-open'
-```
-
-Or, for automatically pasting:
-
-```
-set -g @fingers-copy-command-uppercase 'tmux paste-buffer'
-```
+_DEPRECATED: this option is deprecated, please use [@fingers-shift-action](#fingers-shift-action) instead_
 
 ## @fingers-compact-hints
 
@@ -184,7 +203,7 @@ By default **tmux-fingers** will show hints in a compact format. For example:
 /path/to/foo/bar/lol <strong>[aw]</strong>
 </pre>
 
-( _pressing *aw* would yank `/path/to/foo/bar/lol`_ )
+( _pressing *aw* would copy `/path/to/foo/bar/lol`_ )
 
 While in **[fingers]** mode you can press <kbd>SPACE</kbd> to toggle compact mode on/off.
 
@@ -204,7 +223,6 @@ and `"right"`.
 
 ## @fingers-hint-position-nocompact
 
-
 `default: "right"`
 
 Same as above, used when `@fingers-compact-hints` is set to `0`.
@@ -213,7 +231,9 @@ Same as above, used when `@fingers-compact-hints` is set to `0`.
 
 `default: "#[fg=yellow,bold]%s"`
 
-You can customize the colors using the same syntax used in `.tmux.conf` for styling the status bar. You'll need to include the `%s` placeholder in your custom format, that's where the content will be rendered.
+You can customize the colors using the same syntax used in `.tmux.conf` for
+styling the status bar. You'll need to include the `%s` placeholder in your
+custom format, that's where the content will be rendered.
 
 Check all supported features [here](https://github.com/morantron/tmux-printer).
 
@@ -225,15 +245,66 @@ Same as above, used when `@fingers-compact-hints` is set to `0`.
 
 ## @fingers-highlight-format
 
-`default: "#[fg=yellow,bold,dim]%s"`
+`default: "#[fg=yellow,nobold,dim]%s"`
 
 Custom format for the highlighted match. See [@fingers-hint-format](#fingers-hint-format) for more details.
 
 ## @fingers-highlight-format-nocompact
 
-`default: "#[fg=yellow,bold,dim]%s"`
+`default: "#[fg=yellow,nobold,dim]%s"`
 
 Same as above, used when `@fingers-compact-hints` is set to `0`.
+
+## @fingers-selected-hint-format
+
+`default: "#[fg=green,green]%s"`
+
+Format for hints in selected matches in multimode.
+
+## @fingers-selected-hint-format-nocompact
+
+`default: "#[fg=green,bold][%s]"`
+
+Same as above, used when `@fingers-compact-hints` is set to `0`.
+
+## @fingers-selected-highlight-format
+
+`default: "#[fg=green,nobold,dim]%s"`
+
+Format for selected matches in multimode.
+
+## @fingers-selected-hint-format-nocompact
+
+`default: "#[fg=green,nobold,dim][%s]"`
+
+Same as above, used when `@fingers-compact-hints` is set to `0`.
+
+## @fingers-keyboard-layout
+
+`default: "qwerty"`
+
+Hints are generated taking optimal finger movement into account. You can choose between the following:
+
+  * `qwerty`: the default, use all letters
+  * `qwerty-left-hand`: only use letters easily reachable with left hand
+  * `qwerty-right-hand`: only use letters easily reachable with right hand
+  * `qwerty-homerow`: only use letters in the homerow
+  * `qwertz`
+  * `qwertz-left-hand`
+  * `qwertz-right-hand`
+  * `qwertz-homerow`
+  * `azerty`
+  * `azerty-left-hand`
+  * `azerty-right-hand`
+  * `azerty-homerow`
+  * `colemak`
+  * `colemak-left-hand`
+  * `colemak-right-hand`
+  * `colemak-homerow`
+  * `dvorak`
+  * `dvorak-left-hand`
+  * `dvorak-right-hand`
+  * `dvorak-homerow`
 
 # Troubleshooting
 
